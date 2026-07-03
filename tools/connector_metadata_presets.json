@@ -223,6 +223,20 @@
         }
       ]
     },
+    "awsDefaultCredentialsChain": {
+      "id": "awsDefaultCredentialsChain",
+      "label": "AWS default credential chain",
+      "kind": "iam",
+      "secretPurposes": [],
+      "fields": [
+        {
+          "id": "region",
+          "label": "Region",
+          "type": "string",
+          "option": "region"
+        }
+      ]
+    },
     "awsSigV4": {
       "id": "awsSigV4",
       "label": "AWS SigV4",
@@ -247,6 +261,41 @@
           "label": "Session token",
           "type": "secret",
           "secretPurpose": "token"
+        },
+        {
+          "id": "region",
+          "label": "Region",
+          "type": "string",
+          "option": "region"
+        }
+      ]
+    },
+    "awsAssumeRole": {
+      "id": "awsAssumeRole",
+      "label": "AWS STS assume role",
+      "kind": "iam",
+      "secretPurposes": [
+        "token"
+      ],
+      "fields": [
+        {
+          "id": "roleArn",
+          "label": "Role ARN",
+          "type": "string",
+          "option": "roleArn",
+          "required": true
+        },
+        {
+          "id": "externalId",
+          "label": "External ID",
+          "type": "string",
+          "option": "externalId"
+        },
+        {
+          "id": "sessionName",
+          "label": "Session name",
+          "type": "string",
+          "option": "sessionName"
         },
         {
           "id": "region",
@@ -449,6 +498,35 @@
           "id": "credentialConfig",
           "label": "Credential config",
           "type": "json"
+        },
+        {
+          "id": "subjectToken",
+          "label": "Subject token",
+          "type": "secret",
+          "secretPurpose": "token"
+        }
+      ]
+    },
+    "serviceAccountImpersonation": {
+      "id": "serviceAccountImpersonation",
+      "label": "Service account impersonation",
+      "kind": "iam",
+      "secretPurposes": [
+        "token"
+      ],
+      "fields": [
+        {
+          "id": "targetPrincipal",
+          "label": "Target service account",
+          "type": "string",
+          "option": "targetPrincipal",
+          "required": true
+        },
+        {
+          "id": "delegates",
+          "label": "Delegate chain",
+          "type": "list",
+          "option": "delegates"
         },
         {
           "id": "subjectToken",
@@ -909,6 +987,47 @@
         }
       ]
     },
+    "servicePrincipalCertificate": {
+      "id": "servicePrincipalCertificate",
+      "label": "Service principal certificate",
+      "kind": "oauth2",
+      "secretPurposes": [
+        "privateKey",
+        "privateKeyPassphrase"
+      ],
+      "fields": [
+        {
+          "id": "clientId",
+          "label": "Client ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "id": "tenantId",
+          "label": "Tenant ID",
+          "type": "string",
+          "required": true
+        },
+        {
+          "id": "clientCertificate",
+          "label": "Client certificate",
+          "type": "pem"
+        },
+        {
+          "id": "clientPrivateKey",
+          "label": "Client private key",
+          "type": "pem",
+          "secretPurpose": "privateKey",
+          "required": true
+        },
+        {
+          "id": "clientPrivateKeyPassphrase",
+          "label": "Private key passphrase",
+          "type": "secret",
+          "secretPurpose": "privateKeyPassphrase"
+        }
+      ]
+    },
     "managedIdentity": {
       "id": "managedIdentity",
       "label": "Managed identity",
@@ -1009,6 +1128,23 @@
           "label": "API key",
           "type": "secret",
           "secretPurpose": "token"
+        }
+      ]
+    },
+    "pineconeApiKey": {
+      "id": "apiKey",
+      "label": "Pinecone API key",
+      "kind": "apiKey",
+      "secretPurposes": [
+        "token"
+      ],
+      "fields": [
+        {
+          "id": "apiKey",
+          "label": "API key",
+          "type": "secret",
+          "secretPurpose": "token",
+          "required": true
         }
       ]
     },
@@ -1317,6 +1453,45 @@
         {
           "id": "token",
           "label": "Token",
+          "type": "secret",
+          "secretPurpose": "token"
+        }
+      ]
+    },
+    "snowflakeProgrammaticAccessToken": {
+      "id": "snowflakeProgrammaticAccessToken",
+      "label": "Programmatic access token",
+      "kind": "token",
+      "secretPurposes": [
+        "token"
+      ],
+      "fields": [
+        {
+          "id": "token",
+          "label": "Programmatic access token",
+          "type": "secret",
+          "secretPurpose": "token",
+          "required": true
+        }
+      ]
+    },
+    "snowflakeWorkloadIdentity": {
+      "id": "snowflakeWorkloadIdentity",
+      "label": "Workload identity federation",
+      "kind": "iam",
+      "secretPurposes": [
+        "token"
+      ],
+      "fields": [
+        {
+          "id": "issuer",
+          "label": "Issuer",
+          "type": "string",
+          "option": "issuer"
+        },
+        {
+          "id": "subjectToken",
+          "label": "Subject token",
           "type": "secret",
           "secretPurpose": "token"
         }

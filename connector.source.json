@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "extensionId": "irodori.cloud-spanner",
   "visibility": "public",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "connector": {
     "id": "cloudSpanner.connector",
     "engine": "cloudSpanner",
@@ -69,6 +69,7 @@
       "oauthAccessToken",
       "serviceAccountJson",
       "serviceAccountJwt",
+      "serviceAccountImpersonation",
       "googleApplicationDefaultCredentials",
       "oauth2",
       "workloadIdentity",
