@@ -430,36 +430,11 @@ async fn fetch_oauth2_token(
     email: &str,
     private_key: &str,
 ) -> Result<String, String> {
-    use openssl::hash::MessageDigest;
-    use openssl::pkey::PKey;
-    use openssl::sign::Signer;
-
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
-    let exp = now + 3600;
-    let header = r#"{"alg":"RS256","typ":"JWT"}"#;
-    let claims = format!(
-        r#"{{"iss":"{}","scope":"https://www.googleapis.com/auth/spanner.data https://www.googleapis.com/auth/cloud-platform","aud":"https://oauth2.googleapis.com/token","exp":{},"iat":{}}}"#,
-        email, exp, now
-    );
-    let payload = format!(
-        "{}.{}",
-        base64_url_encode(header.as_bytes()),
-        base64_url_encode(claims.as_bytes())
-    );
-    let pkey = PKey::private_key_from_pem(private_key.as_bytes())
-        .map_err(|err| format!("invalid Google service account private key: {err}"))?;
-    let mut signer = Signer::new(MessageDigest::sha256(), &pkey)
-        .map_err(|err| format!("failed to initialize JWT signer: {err}"))?;
-    signer
-        .update(payload.as_bytes())
-        .map_err(|err| format!("failed to sign JWT payload: {err}"))?;
-    let signature = signer
-        .sign_to_vec()
-        .map_err(|err| format!("failed to sign JWT assertion: {err}"))?;
-    let assertion = format!("{payload}.{}", base64_url_encode(&signature));
+    let assertion = create_jwt_assertion(email, private_key, now)?;
     let body = format!(
         "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion={assertion}"
     );
@@ -485,6 +460,31 @@ async fn fetch_oauth2_token(
         .and_then(Value::as_str)
         .map(str::to_string)
         .ok_or_else(|| "GCP token response missing access_token.".to_string())
+}
+
+fn create_jwt_assertion(email: &str, private_key: &str, now: u64) -> Result<String, String> {
+    use rsa::pkcs1v15::SigningKey;
+    use rsa::pkcs8::DecodePrivateKey;
+    use rsa::sha2::Sha256;
+    use rsa::signature::{SignatureEncoding, Signer};
+    use rsa::RsaPrivateKey;
+
+    let exp = now + 3600;
+    let header = r#"{"alg":"RS256","typ":"JWT"}"#;
+    let claims = format!(
+        r#"{{"iss":"{}","scope":"https://www.googleapis.com/auth/spanner.data https://www.googleapis.com/auth/cloud-platform","aud":"https://oauth2.googleapis.com/token","exp":{},"iat":{}}}"#,
+        email, exp, now
+    );
+    let payload = format!(
+        "{}.{}",
+        base64_url_encode(header.as_bytes()),
+        base64_url_encode(claims.as_bytes())
+    );
+    let pkey = RsaPrivateKey::from_pkcs8_pem(private_key)
+        .map_err(|err| format!("invalid Google service account private key: {err}"))?;
+    let signing_key = SigningKey::<Sha256>::new(pkey);
+    let signature = signing_key.sign(payload.as_bytes()).to_vec();
+    Ok(format!("{payload}.{}", base64_url_encode(&signature)))
 }
 
 fn base64_url_encode(input: &[u8]) -> String {
@@ -602,6 +602,27 @@ mod tests {
     fn encodes_base64_url_without_padding() {
         assert_eq!(base64_url_encode(b"abc"), "YWJj");
         assert_eq!(base64_url_encode(b"ab"), "YWI");
+    }
+
+    #[test]
+    fn signs_service_account_jwt_with_pure_rust_rsa() {
+        use rsa::pkcs8::{EncodePrivateKey, LineEnding};
+        use rsa::rand_core::OsRng;
+        use rsa::RsaPrivateKey;
+
+        let private_key = RsaPrivateKey::new(&mut OsRng, 2048).expect("generate test RSA key");
+        let private_key = private_key
+            .to_pkcs8_pem(LineEnding::LF)
+            .expect("encode test RSA key");
+        let assertion = create_jwt_assertion(
+            "service-account@example.invalid",
+            private_key.as_str(),
+            1_700_000_000,
+        )
+        .expect("sign JWT assertion");
+
+        assert_eq!(assertion.split('.').count(), 3);
+        assert!(!assertion.contains('='));
     }
 
     #[test]
