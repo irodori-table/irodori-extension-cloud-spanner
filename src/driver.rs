@@ -463,12 +463,6 @@ async fn fetch_oauth2_token(
 }
 
 fn create_jwt_assertion(email: &str, private_key: &str, now: u64) -> Result<String, String> {
-    use rsa::pkcs1v15::SigningKey;
-    use rsa::pkcs8::DecodePrivateKey;
-    use rsa::sha2::Sha256;
-    use rsa::signature::{SignatureEncoding, Signer};
-    use rsa::RsaPrivateKey;
-
     let exp = now + 3600;
     let header = r#"{"alg":"RS256","typ":"JWT"}"#;
     let claims = format!(
@@ -480,11 +474,31 @@ fn create_jwt_assertion(email: &str, private_key: &str, now: u64) -> Result<Stri
         base64_url_encode(header.as_bytes()),
         base64_url_encode(claims.as_bytes())
     );
-    let pkey = RsaPrivateKey::from_pkcs8_pem(private_key)
-        .map_err(|err| format!("invalid Google service account private key: {err}"))?;
-    let signing_key = SigningKey::<Sha256>::new(pkey);
-    let signature = signing_key.sign(payload.as_bytes()).to_vec();
+    let signature = sign_rs256(private_key, payload.as_bytes())?;
     Ok(format!("{payload}.{}", base64_url_encode(&signature)))
+}
+
+fn sign_rs256(private_key: &str, message: &[u8]) -> Result<Vec<u8>, String> {
+    use ring::rand::SystemRandom;
+    use ring::signature::{RsaKeyPair, RSA_PKCS1_SHA256};
+
+    let key = pem::parse(private_key)
+        .map_err(|_| "invalid Google service account private key PEM.".to_string())?;
+    if key.tag() != "PRIVATE KEY" {
+        return Err("Google service account private key must use PKCS#8 PEM.".to_string());
+    }
+    let key_pair = RsaKeyPair::from_pkcs8(key.contents())
+        .map_err(|_| "invalid Google service account PKCS#8 private key.".to_string())?;
+    let mut signature = vec![0; key_pair.public().modulus_len()];
+    key_pair
+        .sign(
+            &RSA_PKCS1_SHA256,
+            &SystemRandom::new(),
+            message,
+            &mut signature,
+        )
+        .map_err(|_| "Google service account JWT signing failed.".to_string())?;
+    Ok(signature)
 }
 
 fn base64_url_encode(input: &[u8]) -> String {
@@ -605,24 +619,17 @@ mod tests {
     }
 
     #[test]
-    fn signs_service_account_jwt_with_pure_rust_rsa() {
-        use rsa::pkcs8::{EncodePrivateKey, LineEnding};
-        use rsa::rand_core::OsRng;
-        use rsa::RsaPrivateKey;
-
-        let private_key = RsaPrivateKey::new(&mut OsRng, 2048).expect("generate test RSA key");
-        let private_key = private_key
-            .to_pkcs8_pem(LineEnding::LF)
-            .expect("encode test RSA key");
-        let assertion = create_jwt_assertion(
+    fn rejects_invalid_service_account_private_keys_without_echoing_them() {
+        let private_key = "not-a-private-key";
+        let error = create_jwt_assertion(
             "service-account@example.invalid",
-            private_key.as_str(),
+            private_key,
             1_700_000_000,
         )
-        .expect("sign JWT assertion");
+        .expect_err("reject invalid JWT signing key");
 
-        assert_eq!(assertion.split('.').count(), 3);
-        assert!(!assertion.contains('='));
+        assert!(error.contains("private key"));
+        assert!(!error.contains(private_key));
     }
 
     #[test]

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "extensionId": "irodori.cloud-spanner",
   "visibility": "public",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "connector": {
     "id": "cloudSpanner.connector",
     "engine": "cloudSpanner",
