@@ -428,7 +428,7 @@
   },
   "source": {
     "marketplaceId": "irodori.cloud-spanner",
-    "repository": "https://github.com/hjosugi/irodori-extension-cloud-spanner",
+    "repository": "https://github.com/irodori-table/irodori-extension-cloud-spanner",
     "knowledgeEngineStatus": "recognized_no_connector",
     "adapter": null,
     "adapterSha256": null,
