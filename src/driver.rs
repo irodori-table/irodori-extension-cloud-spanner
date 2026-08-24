@@ -303,15 +303,7 @@ impl SpannerConfig {
     }
 
     fn redact(&self, message: &str) -> String {
-        self.redaction_values
-            .iter()
-            .fold(message.to_string(), |message, secret| {
-                if secret.is_empty() {
-                    message
-                } else {
-                    message.replace(secret, "****")
-                }
-            })
+        abi::redact(message, &self.redaction_values)
     }
 }
 
